@@ -1,15 +1,15 @@
 import React from "react";
-import Button from "@mui/material/Button";
+import Button, { ButtonProps } from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import DownloadIcon from "@mui/icons-material/Download";
 
 type InnerProps = {
   label: string;
   loading?: boolean;
-  disabled?: boolean;
   downloadName?: string | null;
   downloadUrl?: string | null;
   onClickDownload: () => void;
-};
+} & ButtonProps;
 
 function InnerDownloadButton({
   label,
@@ -18,6 +18,7 @@ function InnerDownloadButton({
   downloadUrl,
   downloadName,
   onClickDownload,
+  ...props
 }: InnerProps) {
   if (downloadUrl != null) {
     return (
@@ -37,6 +38,8 @@ function InnerDownloadButton({
       disabled={disabled || loading}
       variant="outlined"
       onClick={onClickDownload}
+      startIcon={<DownloadIcon />}
+      {...props}
     >
       {loading ? <CircularProgress /> : label}
     </Button>
@@ -46,15 +49,15 @@ function InnerDownloadButton({
 type Props = {
   label: string;
   downloadName: string;
-  disabled?: boolean;
   getDownload: () => Promise<Uint8Array>;
-};
+} & ButtonProps;
 
 export function DownloadButton({
   label,
   downloadName,
   disabled,
   getDownload,
+  ...props
 }: Props) {
   const [loading, setLoading] = React.useState(false);
   const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
@@ -72,6 +75,7 @@ export function DownloadButton({
         setDownloadUrl(URL.createObjectURL(new Blob([download])));
         setLoading(false);
       }}
+      {...props}
     />
   );
 }

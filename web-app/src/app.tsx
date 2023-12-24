@@ -3,12 +3,16 @@ import * as tst from "ts-toolbelt";
 import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
 import JirachiImg from "./jirachi.png";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import UsbIcon from "@mui/icons-material/Usb";
 import * as gba from "./gba";
 import { DownloadButton } from "./components/downloadButton";
 import { PixelatedImage } from "./components/pixelatedImage";
+import { InputFileUpload } from "./components/fileUpload";
 import gbaBackupMultibootUrl from "data-url:../../gba/gba_mb.gba";
 
 // Fix navigator global types
@@ -40,8 +44,12 @@ async function boot(device: USBDevice, rom: Uint8Array, log: Log) {
   log("Success!");
 }
 
-async function getSave(device: USBDevice): Promise<Uint8Array> {
-  return gba.read_save(device);
+async function downloadSaveFromGba(device?: USBDevice): Promise<Uint8Array> {
+  if (device != null) {
+    return gba.read_save(device);
+  }
+
+  return new Uint8Array(0);
 }
 
 type GameInfo = {
@@ -69,19 +77,31 @@ async function getGameInfo(device: USBDevice, log: Log): Promise<GameInfo> {
 }
 
 export function App() {
+  const [multibootCustom, setMultibootCustom] = React.useState(false);
   const [gba, setGba] = React.useState<USBDevice | null>(null);
-  const [rom, setRom] = React.useState<Uint8Array | null>(null);
+  const [backupRom, setBackupRom] = React.useState<Uint8Array | null>(null);
+  const [customRom, setCustomRom] = React.useState<Uint8Array | null>(null);
   const [gameInfo, setGameInfo] = React.useState<GameInfo | null>(null);
   const [log, setLog] = React.useState<string[]>([]);
+  const rom = multibootCustom ? customRom : backupRom;
 
   React.useEffect(() => {
     fetch(gbaBackupMultibootUrl)
       .then((res) => res.arrayBuffer())
-      .then((buf) => setRom(new Uint8Array(buf)));
+      .then((buf) => setBackupRom(new Uint8Array(buf)));
   }, []);
 
-  const addLog = (newLog: string) =>
-    setLog((currentLog) => [...currentLog, newLog]);
+  const multibootGba = React.useCallback(async () => {
+    const addLog = (newLog: string) =>
+      setLog((currentLog) => [...currentLog, newLog]);
+
+    const device = await handleDevice();
+    if (device != null && rom != null) {
+      await boot(device, rom, addLog);
+      setGameInfo(await getGameInfo(device, addLog));
+      setGba(device);
+    }
+  }, []);
 
   return (
     <Box>
@@ -98,35 +118,64 @@ export function App() {
               />
             </Card>
           </Grid>
-          <Grid item>
-            <Card sx={{ p: 2, display: "flex", flexDirection: "column" }}>
-              <Button
-                sx={{ mb: 2 }}
-                disabled={rom == null}
-                variant="contained"
-                onClick={async () => {
-                  const device = await handleDevice();
-                  if (device != null && rom != null) {
-                    await boot(device, rom, addLog);
-                    setGameInfo(await getGameInfo(device, addLog));
-                    setGba(device);
-                  }
-                }}
-              >
-                Multiboot GBA
-              </Button>
-              <DownloadButton
-                label="Download save"
-                downloadName={`${gameInfo?.gameName ?? "save"}.sav`}
-                disabled={gba == null}
-                getDownload={async () => {
-                  if (gba) {
-                    return getSave(gba);
-                  }
 
-                  return new Uint8Array(0);
-                }}
-              />
+          <Grid item>
+            <Card>
+              <Grid container spacing={2} p={2}>
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={<Switch />}
+                    label="Multiboot custom rom"
+                    onChange={() => setMultibootCustom(!multibootCustom)}
+                  />
+                </Grid>
+                {!multibootCustom && (
+                  <>
+                    <Grid item xs={12}>
+                      <Button
+                        disabled={backupRom == null}
+                        variant="contained"
+                        onClick={multibootGba}
+                        startIcon={<UsbIcon />}
+                        fullWidth
+                      >
+                        Multiboot GBA
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <DownloadButton
+                        label="Download save"
+                        downloadName={`${gameInfo?.gameName ?? "save"}.sav`}
+                        disabled={gba == null}
+                        getDownload={downloadSaveFromGba}
+                        fullWidth
+                      />
+                    </Grid>
+                  </>
+                )}
+                {multibootCustom && (
+                  <>
+                    <Grid item xs={12}>
+                      <InputFileUpload
+                        label="Select Multiboot"
+                        onFileRead={setCustomRom}
+                        fullWidth
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Button
+                        disabled={customRom == null}
+                        variant="outlined"
+                        onClick={multibootGba}
+                        startIcon={<UsbIcon />}
+                        fullWidth
+                      >
+                        Multiboot GBA
+                      </Button>
+                    </Grid>
+                  </>
+                )}
+              </Grid>
             </Card>
           </Grid>
         </Grid>
