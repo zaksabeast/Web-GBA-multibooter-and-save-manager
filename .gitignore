@@ -1,0 +1,7 @@
+*.gba
+*.elf
+*.map
+*.d
+*.o
+.vscode
+.DS_Store
