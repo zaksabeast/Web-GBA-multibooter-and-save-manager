@@ -1,18 +1,21 @@
 import React from "react";
 import * as tst from "ts-toolbelt";
+import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
+import CardMedia from "@mui/material/CardMedia";
+import CardContent from "@mui/material/CardContent";
+import CardActions from "@mui/material/CardActions";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
-import JirachiImg from "./jirachi.png";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import UsbIcon from "@mui/icons-material/Usb";
 import * as gba from "./gba";
 import { DownloadButton } from "./components/downloadButton";
-import { PixelatedImage } from "./components/pixelatedImage";
 import { InputFileUpload } from "./components/fileUpload";
+import { getRomImage, getRomName } from "./gba/rom";
 import gbaBackupMultibootUrl from "data-url:../../gba/gba_mb.gba";
 
 // Fix navigator global types
@@ -91,6 +94,8 @@ export function App() {
       .then((buf) => setBackupRom(new Uint8Array(buf)));
   }, []);
 
+  const romImageUrl = React.useMemo(() => {}, []);
+
   const multibootGba = React.useCallback(async () => {
     const addLog = (newLog: string) =>
       setLog((currentLog) => [...currentLog, newLog]);
@@ -116,12 +121,7 @@ export function App() {
                 value={log.join("\n")}
                 disabled
               />
-            </Card>
-          </Grid>
-
-          <Grid item>
-            <Card>
-              <Grid container spacing={2} p={2}>
+              <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <FormControlLabel
                     control={<Switch />}
@@ -181,28 +181,40 @@ export function App() {
         </Grid>
 
         <Grid item sm={8}>
-          <Card
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "100%",
-              maxHeight: 1000,
-            }}
-          >
-            <Box
-              sx={{
-                overflow: "hidden",
-                height: 233,
-                width: 258,
-              }}
-            >
-              <PixelatedImage
-                src={JirachiImg}
-                sx={{ width: 800, position: "relative", top: -389, left: -283 }}
-              />
-            </Box>
-          </Card>
+          <Grid container spacing={2}>
+            {["AXPE", "AZLE", "B53E", "AGSE"].map((gameId) => {
+              const title = getRomName(gameId) ?? "";
+              return (
+                <Grid item>
+                  <Card sx={{ width: 240 * 1.5 }}>
+                    <CardMedia
+                      sx={{ height: 160 * 1.5, width: 240 * 1.5 }}
+                      image={getRomImage(gameId) ?? undefined}
+                      title={title}
+                    />
+                    <CardContent>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Maybe make the title and this description editable?
+                      </Typography>
+                    </CardContent>
+                    <CardActions>
+                      <Button size="small">Download Save</Button>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
         </Grid>
       </Grid>
     </Box>

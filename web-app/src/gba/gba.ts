@@ -1,3 +1,5 @@
+import { parseHeader, RomHeader } from "./rom";
+
 export function to_le_bytes(num: number): Uint8Array {
   return Uint8Array.from([num >> 0, num >> 8, num >> 16, num >> 24]);
 }
@@ -91,21 +93,16 @@ async function read(
   return recv_data(count, device);
 }
 
-export async function read_header(device: USBDevice): Promise<{
-  gameName: string;
-  gameId: string;
-  companyId: string;
-  header: Uint8Array;
-}> {
+export async function read_header(device: USBDevice): Promise<
+  RomHeader & {
+    header: Uint8Array;
+  }
+> {
   const header = await read(0x8000000, 0xc0, device);
-  const gameName = header.slice(0xa0, 0xac);
-  const gameId = header.slice(0xac, 0xb0);
-  const companyId = header.slice(0xb0, 0xb2);
+  const parsed = parseHeader(header);
   return {
+    ...parsed,
     header,
-    gameName: new TextDecoder().decode(gameName),
-    gameId: new TextDecoder().decode(gameId),
-    companyId: new TextDecoder().decode(companyId),
   };
 }
 
