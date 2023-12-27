@@ -4,7 +4,6 @@ import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
-import CardMedia from "@mui/material/CardMedia";
 import CardContent from "@mui/material/CardContent";
 import CardActions from "@mui/material/CardActions";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -12,6 +11,8 @@ import Switch from "@mui/material/Switch";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import UsbIcon from "@mui/icons-material/Usb";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import * as gba from "./gba";
 import { DownloadButton } from "./components/downloadButton";
 import { InputFileUpload } from "./components/fileUpload";
@@ -79,6 +80,30 @@ async function getGameInfo(device: USBDevice, log: Log): Promise<GameInfo> {
   };
 }
 
+type SaveContainerProps = {
+  children: React.ReactNode;
+};
+
+function SaveContainer({ children }: SaveContainerProps) {
+  const theme = useTheme();
+  const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
+
+  if (isXsScreen) {
+    return children;
+  }
+
+  return (
+    <Grid item container xs={12} sm={6} md={8} spacing={2}>
+      {children}
+    </Grid>
+  );
+}
+
+type Save = {
+  gameId: string;
+  save: Uint8Array;
+};
+
 export function App() {
   const [multibootCustom, setMultibootCustom] = React.useState(false);
   const [gba, setGba] = React.useState<USBDevice | null>(null);
@@ -86,6 +111,7 @@ export function App() {
   const [customRom, setCustomRom] = React.useState<Uint8Array | null>(null);
   const [gameInfo, setGameInfo] = React.useState<GameInfo | null>(null);
   const [log, setLog] = React.useState<string[]>([]);
+  const [saves, setSaves] = React.useState<Save[]>([]);
   const rom = multibootCustom ? customRom : backupRom;
 
   React.useEffect(() => {
@@ -93,8 +119,6 @@ export function App() {
       .then((res) => res.arrayBuffer())
       .then((buf) => setBackupRom(new Uint8Array(buf)));
   }, []);
-
-  const romImageUrl = React.useMemo(() => {}, []);
 
   const multibootGba = React.useCallback(async () => {
     const addLog = (newLog: string) =>
@@ -111,111 +135,115 @@ export function App() {
   return (
     <Box>
       <Grid spacing={2} container direction="row">
-        <Grid item container spacing={2} direction="column" sm={4}>
-          <Grid item>
-            <Card sx={{ p: 2 }}>
-              <TextField
-                multiline
-                fullWidth
-                minRows={14}
-                value={log.join("\n")}
-                disabled
-              />
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <FormControlLabel
-                    control={<Switch />}
-                    label="Multiboot custom rom"
-                    onChange={() => setMultibootCustom(!multibootCustom)}
-                  />
-                </Grid>
-                {!multibootCustom && (
-                  <>
-                    <Grid item xs={12}>
-                      <Button
-                        disabled={backupRom == null}
-                        variant="contained"
-                        onClick={multibootGba}
-                        startIcon={<UsbIcon />}
-                        fullWidth
-                      >
-                        Multiboot GBA
-                      </Button>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <DownloadButton
-                        label="Download save"
-                        downloadName={`${gameInfo?.gameName ?? "save"}.sav`}
-                        disabled={gba == null}
-                        getDownload={downloadSaveFromGba}
-                        fullWidth
-                      />
-                    </Grid>
-                  </>
-                )}
-                {multibootCustom && (
-                  <>
-                    <Grid item xs={12}>
-                      <InputFileUpload
-                        label="Select Multiboot"
-                        onFileRead={setCustomRom}
-                        fullWidth
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Button
-                        disabled={customRom == null}
-                        variant="outlined"
-                        onClick={multibootGba}
-                        startIcon={<UsbIcon />}
-                        fullWidth
-                      >
-                        Multiboot GBA
-                      </Button>
-                    </Grid>
-                  </>
-                )}
+        <Grid item spacing={2} direction="column" xs={12} sm={6} md={4}>
+          <Card sx={{ p: 2 }}>
+            <TextField
+              multiline
+              fullWidth
+              minRows={14}
+              value={log.join("\n")}
+              disabled
+            />
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={<Switch />}
+                  label="Multiboot custom rom"
+                  onChange={() => setMultibootCustom(!multibootCustom)}
+                />
               </Grid>
-            </Card>
-          </Grid>
+              {!multibootCustom && (
+                <>
+                  <Grid item xs={12}>
+                    <Button
+                      disabled={backupRom == null}
+                      variant="contained"
+                      onClick={multibootGba}
+                      startIcon={<UsbIcon />}
+                      fullWidth
+                    >
+                      Multiboot GBA
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <DownloadButton
+                      label="Download save"
+                      downloadName={`${gameInfo?.gameName ?? "save"}.sav`}
+                      disabled={gba == null}
+                      getDownload={downloadSaveFromGba}
+                      fullWidth
+                    />
+                  </Grid>
+                </>
+              )}
+              {multibootCustom && (
+                <>
+                  <Grid item xs={12}>
+                    <InputFileUpload
+                      label="Select Multiboot"
+                      onFileRead={setCustomRom}
+                      fullWidth
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      disabled={customRom == null}
+                      variant="outlined"
+                      onClick={multibootGba}
+                      startIcon={<UsbIcon />}
+                      fullWidth
+                    >
+                      Multiboot GBA
+                    </Button>
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          </Card>
         </Grid>
 
-        <Grid item sm={8}>
-          <Grid container spacing={2}>
-            {["AXPE", "AZLE", "B53E", "AGSE"].map((gameId) => {
-              const title = getRomName(gameId) ?? "";
-              return (
-                <Grid item>
-                  <Card sx={{ width: 240 * 1.5 }}>
-                    <CardMedia
-                      sx={{ height: 160 * 1.5, width: 240 * 1.5 }}
-                      image={getRomImage(gameId) ?? undefined}
-                      title={title}
-                    />
-                    <CardContent>
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Maybe make the title and this description editable?
-                      </Typography>
-                    </CardContent>
-                    <CardActions>
-                      <Button size="small">Download Save</Button>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              );
-            })}
-          </Grid>
-        </Grid>
+        <SaveContainer>
+          {saves.length === 0 && (
+            <Grid item>
+              <Typography>
+                No saves found. Make a backup to see it here!
+              </Typography>
+            </Grid>
+          )}
+          {saves.map(({ gameId }) => {
+            const title = getRomName(gameId) ?? "";
+
+            return (
+              <Grid item xs={12} md={6} lg={4}>
+                <Card sx={{ width: "100%" }}>
+                  <img
+                    src={getRomImage(gameId) ?? undefined}
+                    width="100%"
+                    title={title}
+                  />
+                  <CardContent>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Maybe make the title and this description editable?
+                    </Typography>
+                  </CardContent>
+                  <CardActions>
+                    <Button size="small">Download Save</Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            );
+          })}
+        </SaveContainer>
       </Grid>
     </Box>
   );
