@@ -49,17 +49,16 @@ function InnerDownloadButton({
 type Props = {
   label: string;
   downloadName: string;
-  getDownload: () => Promise<Uint8Array>;
+  download: Uint8Array;
 } & ButtonProps;
 
 export function DownloadButton({
   label,
   downloadName,
   disabled,
-  getDownload,
+  download,
   ...props
 }: Props) {
-  const [loading, setLoading] = React.useState(false);
   const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
 
   return (
@@ -67,13 +66,9 @@ export function DownloadButton({
       label={label}
       downloadName={downloadName}
       downloadUrl={downloadUrl}
-      loading={loading}
       disabled={disabled}
-      onClickDownload={async () => {
-        setLoading(true);
-        const download = await getDownload();
+      onClickDownload={() => {
         setDownloadUrl(URL.createObjectURL(new Blob([download])));
-        setLoading(false);
       }}
       {...props}
     />

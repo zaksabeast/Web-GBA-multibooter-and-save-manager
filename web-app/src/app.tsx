@@ -11,6 +11,7 @@ import Switch from "@mui/material/Switch";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import UsbIcon from "@mui/icons-material/Usb";
+import DownloadIcon from "@mui/icons-material/Download";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import * as gba from "./gba";
@@ -48,12 +49,8 @@ async function boot(device: USBDevice, rom: Uint8Array, log: Log) {
   log("Success!");
 }
 
-async function downloadSaveFromGba(device?: USBDevice): Promise<Uint8Array> {
-  if (device != null) {
-    return gba.read_save(device);
-  }
-
-  return new Uint8Array(0);
+async function downloadSaveFromGba(device: USBDevice): Promise<Uint8Array> {
+  return gba.read_save(device);
 }
 
 type GameInfo = {
@@ -109,7 +106,6 @@ export function App() {
   const [gba, setGba] = React.useState<USBDevice | null>(null);
   const [backupRom, setBackupRom] = React.useState<Uint8Array | null>(null);
   const [customRom, setCustomRom] = React.useState<Uint8Array | null>(null);
-  const [gameInfo, setGameInfo] = React.useState<GameInfo | null>(null);
   const [log, setLog] = React.useState<string[]>([]);
   const [saves, setSaves] = React.useState<Save[]>([]);
   const rom = multibootCustom ? customRom : backupRom;
@@ -120,14 +116,24 @@ export function App() {
       .then((buf) => setBackupRom(new Uint8Array(buf)));
   }, []);
 
-  const multibootGba = React.useCallback(async () => {
-    const addLog = (newLog: string) =>
-      setLog((currentLog) => [...currentLog, newLog]);
+  const addSave = (save: Save) =>
+    setSaves((existingSaves) => [...existingSaves, save]);
 
+  const addLog = (newLog: string) =>
+    setLog((currentLog) => [...currentLog, newLog]);
+
+  const backupSaveToBrowser = async () => {
+    if (gba != null) {
+      const gameInfo = await getGameInfo(gba, addLog);
+      const save = await downloadSaveFromGba(gba);
+      addSave({ gameId: gameInfo.gameId, save });
+    }
+  };
+
+  const multibootGba = React.useCallback(async () => {
     const device = await handleDevice();
     if (device != null && rom != null) {
       await boot(device, rom, addLog);
-      setGameInfo(await getGameInfo(device, addLog));
       setGba(device);
     }
   }, []);
@@ -166,13 +172,15 @@ export function App() {
                     </Button>
                   </Grid>
                   <Grid item xs={12}>
-                    <DownloadButton
-                      label="Download save"
-                      downloadName={`${gameInfo?.gameName ?? "save"}.sav`}
+                    <Button
+                      variant="outlined"
+                      startIcon={<DownloadIcon />}
                       disabled={gba == null}
-                      getDownload={downloadSaveFromGba}
+                      onClick={backupSaveToBrowser}
                       fullWidth
-                    />
+                    >
+                      Back up save
+                    </Button>
                   </Grid>
                 </>
               )}
@@ -210,14 +218,14 @@ export function App() {
               </Typography>
             </Grid>
           )}
-          {saves.map(({ gameId }) => {
-            const title = getRomName(gameId) ?? "";
+          {saves.map((gameSave) => {
+            const title = getRomName(gameSave.gameId) ?? "Game";
 
             return (
               <Grid item xs={12} md={6} lg={4}>
                 <Card sx={{ width: "100%" }}>
                   <img
-                    src={getRomImage(gameId) ?? undefined}
+                    src={getRomImage(gameSave.gameId) ?? undefined}
                     width="100%"
                     title={title}
                   />
@@ -237,7 +245,13 @@ export function App() {
                     </Typography>
                   </CardContent>
                   <CardActions>
-                    <Button size="small">Download Save</Button>
+                    <DownloadButton
+                      label="Download save"
+                      downloadName={`${title}.sav`}
+                      disabled={gba == null}
+                      download={gameSave.save}
+                      fullWidth
+                    />
                   </CardActions>
                 </Card>
               </Grid>
