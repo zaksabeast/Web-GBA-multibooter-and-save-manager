@@ -1,5 +1,5 @@
-# GBA Link Cable Dumper
+# Web GBA multibooter and save manager
 
-A GC Homebrew App to get GBA BIOS, ROMs and saves via the GC GBA Link Cable.  
-Save Support based on SendSave by Chishm.  
-GBA BIOS Dumper by Dark Fader.
+A WIP web app to multiboot GBA homebrew and backup saves.
+
+Use with a passthrough project, such as https://github.com/zaksabeast/Raspberry-Pico-GBA-Passthrough.
